@@ -31,7 +31,7 @@ char I2C_Read_Ack(void);
 char I2C_Read_No_ack(void);
 void I2C_Stop(void);
 #define SLAVE_WRITE_ADDRESS 0x20
-#define SLAVE_READ_ADDRESS 0x20
+#define SLAVE_READ_ADDRESS 0x21      //general call address with twgce=1
 
 
 
@@ -56,13 +56,35 @@ int main(void)
 			sprintf(buffer, "%d", i);
 			I2C_Write1(i);
 			LCD_String_xy(1,10,buffer);
-			_delay_ms(400);
+			_delay_ms(200);
 			
 		}
 		
 		LCD_String_xy(1,0,"Receiving");
 		
-		I2C_Repeated_Start(SLAVE_READ_ADDRESS);
+		uint8_t Ack_N = I2C_Repeated_Start(SLAVE_READ_ADDRESS);
+		
+		if(Ack_N == 3)
+		{
+			PORTB |= (1 << PORTB1);
+			LCD_Clear();
+			LCD_String("Failed");
+		}
+		else if (Ack_N == 2)
+		{
+			PORTB |= (1 << PORTB3);
+			LCD_Clear();
+			LCD_String("nack received");
+		}
+		else if(Ack_N == 0)
+		{
+			LCD_Clear();
+			LCD_String("Start Cond??");          //nothing happenning
+		}
+		else
+		{
+			LCD_String("No idea");
+		}
 		_delay_ms(5);
 		for(uint8_t i = 0; i < count ; i++)
 		{
@@ -135,8 +157,10 @@ uint8_t I2C_Write(char write_address)
 uint8_t I2C_Repeated_Start(char read_address)
 {
 	uint8_t status;
-	TWCR |= (1 << TWEN) | (1 << TWSTA) | (1 << TWINT);
-	status = (TWSR & 0xF8);      //mask the upper 5 bits
+	TWCR = (1 << TWSTA) | (1 << TWEN) | (1 << TWINT);
+	while(!(TWCR & (1 << TWINT)));  //LOOP until transmission done
+	
+	status = (TWSR & 0xF8);      //read status register
 	
 	if (status != 0x10)   //check whether repeated start conditon has been transmitted
 	{
@@ -144,7 +168,7 @@ uint8_t I2C_Repeated_Start(char read_address)
 	}
 	
 	TWDR = read_address;
-	TWCR |= (1 << TWEN) | (1 << TWINT);
+	TWCR = (1 << TWEN) | (1 << TWINT);
 	while (! (TWCR & (1 << TWINT)));      //wait for current twi job to finish
 	status = (TWCR & 0xF8);
 	
