@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdio.h>
 //lcd
+//testing if git is working properly
 #define LCD_Dir DDRD					/* Define LCD data port direction */
 #define LCD_Port PORTD					/* Define LCD data port */
 #define RS PC1							/* Define Register Select (data reg./command reg.) signal pin */
